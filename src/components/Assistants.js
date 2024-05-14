@@ -63,7 +63,7 @@ function Assistants() {
                         {assistants.map((assistant) => (
                             <TableRow key={assistant._id}>
                                 <TableCell component="th" scope="row">
-                                    {assistant.assistantId}
+                                    {assistant.name}
                                 </TableCell>
                                 <TableCell align="right">
                                     <Button 

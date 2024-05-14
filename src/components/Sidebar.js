@@ -8,6 +8,8 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import AddIcCallIcon from '@mui/icons-material/AddIcCall';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 
@@ -78,11 +80,12 @@ function Sidebar() {
                 <List>
                     {[ 
                         { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-                        { text: 'Staffs', icon: <PeopleIcon />, path: '/staffs' },
-                        { text: 'Assistants', icon: <PeopleIcon />, path: '/assistants' },
+                        { text: 'Staff', icon: <PeopleIcon />, path: '/staff' },
+                        { text: 'Assistants', icon: <SupportAgentIcon />, path: '/assistants' },
+                        { text: 'Make Call', icon: <AddIcCallIcon />, path: '/make-call' },
                         { text: 'Call Logs', icon: <DescriptionIcon />, path: '/call-logs' },
+                        { text: 'Wallet', icon: <AccountBalanceWalletIcon />, path: '/wallet' },
                         { text: 'Account', icon: <AccountCircleIcon />, path: '/account' },
-                        { text: 'Wallet', icon: <AccountBalanceWalletIcon />, path: '/wallet' }
                     ].map((item) => (
                         <ListItem button key={item.text} component={NavLink} to={item.path} onClick={isMobile ? handleDrawerToggle : null} sx={{ '&.active': { backgroundColor: 'action.selected' } }}>
                             <ListItemIcon>{item.icon}</ListItemIcon>

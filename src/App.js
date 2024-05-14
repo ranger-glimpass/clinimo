@@ -9,6 +9,8 @@ import ProtectedRoute from './auth/ProtectedRoute'; // Import ProtectedRoute
 import CallLogs from './components/CallLogs';
 import Account from './components/Account';
 import CallDetails from './components/CallDetails';
+import Staff from './components/Staff';
+import MakeCall from './components/MakeCall';
 
 function App() {
     return (
@@ -42,6 +44,20 @@ function App() {
                     <ProtectedRoute>
                         <Layout>
                             <Account />
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+                 <Route path="/staff" element={
+                    <ProtectedRoute>
+                        <Layout>
+                            <Staff />
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/make-call" element={
+                    <ProtectedRoute>
+                        <Layout>
+                            <MakeCall />
                         </Layout>
                     </ProtectedRoute>
                 } />

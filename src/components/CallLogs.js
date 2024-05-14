@@ -74,7 +74,7 @@ function CallLogs() {
                 label="Select Assistant"  // Added label for better accessibility
             >
                 {assistants.map((assistant) => (
-                    <MenuItem key={assistant.assistantId} value={assistant.assistantId}>{assistant.assistantId}</MenuItem>
+                    <MenuItem key={assistant.assistantId} value={assistant.assistantId}>{assistant.name}</MenuItem>
                 ))}
             </Select>
         </FormControl>

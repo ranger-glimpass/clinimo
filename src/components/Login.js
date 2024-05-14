@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Button, Paper, TextField, Grid, Typography, Link, CircularProgress, Radio, RadioGroup, FormControlLabel
 } from '@mui/material';
-import { loginUser, fetchAssistants } from '../apiService';
+import { loginUser, fetchAssistants, fetchAssistantById } from '../apiService';
 import { useNavigate } from 'react-router-dom';
+// import {env} from "../.env"
 
 function Login() {
     const [email, setEmail] = useState('');
@@ -11,11 +12,13 @@ function Login() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [userType, setUserType] = useState('staff');  // Default to 'staff'
+    // const Loginname = process.env.REACT_APP_LOGIN_NAME;
     
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (sessionStorage.getItem("user") !== null) {
+        // Check if the user is already logged in
+        if (sessionStorage.getItem('user') !== null) {
             navigate('/dashboard');
         }
     }, [navigate]);
@@ -26,7 +29,7 @@ function Login() {
         try {
             const data = await loginUser(email, password, userType);  // Pass userType to loginUser
             if (data.length === 0) {
-                setError('Invalid email and password');
+                setError('Invalid email or password');
                 setLoading(false);
             } else {
                 sessionStorage.setItem('user', JSON.stringify(data));
@@ -43,8 +46,37 @@ function Login() {
 
     const fetchAndStoreAssistants = async (clientId) => {
         try {
-            const assistants = await fetchAssistants(clientId);
-            sessionStorage.setItem('assistants', JSON.stringify(assistants.data));
+            const assistantsResponse = await fetchAssistants(clientId);  // Replace with the actual function or fetch implementation
+            const assistants = assistantsResponse.data.map(assistant => {
+                return {
+                    ...assistant,
+                    name: assistant.assistantId  // Initially, store assistantId as the name placeholder
+                };
+            });
+
+            // Fetch the actual names for each assistant
+            const updatedAssistants = await Promise.all(assistants.map(async (assistant) => {
+                try {
+                    // const response = await fetch(`https://api.vapi.ai/assistant/${assistant.assistantId}`, {
+                    //     headers: {
+                    //         'Authorization': 'Bearer e518c4e5-8e86-42ab-b1a5-5315f83af694'
+                    //     }
+                    const response = await fetchAssistantById(assistant.assistantId);
+                    // });
+                    const data = await response;
+                    // console.log(data, "dataatata")
+                    return {
+                        ...assistant,
+                        name: data.name || assistant.assistantId  // Use the name from the response or fallback to assistantId
+                    };
+                } catch (error) {
+                    console.error(`Failed to fetch name for assistant ${assistant.assistantId}:`, error);
+                    return assistant;  // Return the original assistant object on error
+                }
+            }));
+
+            // Store the assistants with names in sessionStorage
+            sessionStorage.setItem('assistants', JSON.stringify(updatedAssistants));
         } catch (error) {
             console.error('Failed to fetch assistants:', error);
         }
