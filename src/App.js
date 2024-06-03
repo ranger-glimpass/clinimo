@@ -11,6 +11,8 @@ import Account from './components/Account';
 import CallDetails from './components/CallDetails';
 import Staff from './components/Staff';
 import MakeCall from './components/MakeCall';
+import Registration from './components/Registration';
+import CallReport from './components/CallReport';
 
 function App() {
     return (
@@ -18,6 +20,7 @@ function App() {
             <Routes>
                 <Route path="/" element={<Login />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Registration />} />
                 <Route path="/dashboard" element={
                     <ProtectedRoute>
                         <Layout>
@@ -37,6 +40,13 @@ function App() {
                     <ProtectedRoute>
                         <Layout>
                             <CallLogs />
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/call-reports" element={
+                    <ProtectedRoute>
+                        <Layout>
+                            <CallReport />
                         </Layout>
                     </ProtectedRoute>
                 } />

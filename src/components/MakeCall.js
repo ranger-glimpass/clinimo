@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, TextField, Typography, Modal, CircularProgress, Select, MenuItem, InputLabel, FormControl, IconButton } from '@mui/material';
+import { Box, Button, TextField, Typography, Modal, CircularProgress, Select, MenuItem, InputLabel, FormControl, IconButton, Divider } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
-import { makeCall } from '../apiService';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import QuestionMarkIcon from '@mui/icons-material/Help';
+import { makeCall, createUser, getCallReports, fetchCallDetailsById, updateUser, getCallAgainData } from '../apiService';
 import Papa from 'papaparse';
 
 const MakeCall = () => {
@@ -10,8 +13,12 @@ const MakeCall = () => {
     const [assistantId, setAssistantId] = useState('');
     const [assistants, setAssistants] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [response, setResponse] = useState(null);
+    const [response, setResponse] = useState({});
     const [open, setOpen] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [callStatus, setCallStatus] = useState({});
+    const [updateStatus, setUpdateStatus] = useState(null);
+    const [isPredefined, setIsPredefined] = useState(false);
 
     useEffect(() => {
         const storedAssistants = JSON.parse(sessionStorage.getItem('assistants')) || [];
@@ -42,30 +49,123 @@ const MakeCall = () => {
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
+            setUploadProgress(0);
+            const newCustomers = [];
+            let rowCount = 0;
+            const CHUNK_SIZE = 500; // Adjust this value as needed
+    
             Papa.parse(file, {
                 header: true,
-                complete: (result) => {
-                    setCustomers(result.data.map(row => ({ name: row.CustomerName, number: row.PhoneNumber })));
+                skipEmptyLines: true,
+                chunkSize: CHUNK_SIZE,
+                chunk: (results, parser) => {
+                    newCustomers.push(...results.data.map(row => ({ name: row.CustomerName, number: '+' + row.PhoneNumber })));
+                    rowCount += results.data.length;
+                    setUploadProgress((rowCount / results.meta.cursor) * 100);
                 },
-                skipEmptyLines: true
+                complete: () => {
+                    setCustomers(prevCustomers => {
+                        const updatedCustomers = prevCustomers[0].name === '' && prevCustomers[0].number === '' ? [] : prevCustomers;
+                        return [...updatedCustomers, ...newCustomers];
+                    });
+                    setUploadProgress(100);
+                },
+                error: (error) => {
+                    console.error('Error parsing CSV file:', error);
+                    setUploadProgress(0);
+                }
             });
         }
     };
+    
+
+    // const handleFileUpload = (e) => {
+    //     const file = e.target.files[0];
+    //     if (file) {
+    //         setUploadProgress(0);
+    //         const newCustomers = [];
+    //         let rowCount = 0;
+
+    //         Papa.parse(file, {
+    //             header: true,
+    //             skipEmptyLines: true,
+    //             step: (row) => {
+    //                 newCustomers.push({ name: row.data.CustomerName, number: row.data.PhoneNumber });
+    //                 rowCount += 1;
+    //                 setCustomers(prevCustomers => {
+    //                     const updatedCustomers = prevCustomers[0].name === '' && prevCustomers[0].number === '' ? [] : prevCustomers;
+    //                     return [...updatedCustomers, { name: row.data.CustomerName, number: '+' + row.data.PhoneNumber }];
+    //                 });
+    //                 setUploadProgress((rowCount / file.size) * 100);
+    //             },
+    //             complete: () => {
+    //                 setUploadProgress(100);
+    //             }
+    //         });
+    //     }
+    // };
 
     const handleCallClick = async () => {
         setLoading(true);
+        const newCallStatus = customers.reduce((acc, customer) => {
+            acc[customer.number] = 'waiting';
+            return acc;
+        }, {});
+        setCallStatus(newCallStatus);
+
         try {
             const results = await Promise.allSettled(
                 customers.map(customer => makeCall(customer, assistantId))
             );
-            const responses = results.map((result, index) => ({
-                customer: customers[index],
-                status: result.status,
-                value: result.value,
-                reason: result.reason
-            }));
+            const responses = {};
+            const formattedResponses = [];
+            const updatedCallStatus = { ...newCallStatus };
+            const clientId = JSON.parse(sessionStorage.getItem('user'))._id;
+
+            results.forEach((result, index) => {
+                const customer = customers[index];
+                const customerResponse = {
+                    customer,
+                    status: result.status,
+                    value: result.value,
+                    reason: result.reason
+                };
+                responses[customer.number] = customerResponse;
+                let callAgain = false;
+                // console.log(result)
+                if(result.status === "rejected"){
+                    callAgain = true;
+                }
+                formattedResponses.push({
+                    _id: customer._id, // Keep _id from predefined data
+                    number: customer.number,
+                    name: customer.name,
+                    status: result.status,
+                    callAgain: callAgain,
+                    reason: result.reason?.message || null,
+                    id: result.value?.id || null,
+                    clientId: clientId
+                });
+
+                if (result.status === 'fulfilled') {
+                    updatedCallStatus[customer.number] = 'success';
+                } else {
+                    updatedCallStatus[customer.number] = 'failed';
+                }
+            });
             setResponse(responses);
+            setCallStatus(updatedCallStatus);
             setOpen(true);
+
+            // Print the response status for all users in the console
+            console.log("Detailed Response Status for all users:", formattedResponses);
+
+            // Conditionally call createUser or updateUser based on isPredefined flag
+            if (isPredefined) {
+                await updateUser(formattedResponses);
+            } else {
+                await createUser(formattedResponses);
+            }
         } catch (error) {
             console.error('Failed to make calls:', error);
             setResponse([{ error: 'Failed to make calls' }]);
@@ -75,11 +175,91 @@ const MakeCall = () => {
         }
     };
 
+    const handleFetchAndMergeCallDetails = async () => {
+        setLoading(true);
+        try {
+            const clientId = JSON.parse(sessionStorage.getItem('user'))._id;
+            const callReports = await getCallReports(clientId);
+            const filteredReports = callReports.filter(report => report.id && !report.startedAt);
+            console.log(filteredReports);
+    
+            const mergedReports = await Promise.all(filteredReports.map(async (report) => {
+                try {
+                    const callDetails = await fetchCallDetailsById(report.id);
+                    return {
+                        ...report,
+                        assistantId: callDetails.assistantId,
+                        startedAt: callDetails.startedAt,
+                        endedAt: callDetails.endedAt,
+                        recordingUrl: callDetails.recordingUrl,
+                        summary: callDetails.summary,
+                        cost: callDetails.cost,
+                        callingNumber: callDetails.phoneNumber.twilioPhoneNumber,
+                        endedReason: callDetails.endedReason,
+                    };
+                } catch (error) {
+                    console.error(`Failed to fetch details for report ID ${report.id}:`, error);
+                    // Return null or any other indication of failure
+                    return null;
+                }
+            }));
+    
+            // Filter out the null values (failed fetches)
+            const successfulMergedReports = mergedReports.filter(report => report !== null);
+            console.log("Merged Reports:", successfulMergedReports);
+    
+            // Update the merged reports only if there are successful ones
+            if (successfulMergedReports.length > 0) {
+                await updateUser(successfulMergedReports);
+                setUpdateStatus('success');
+            } else {
+                setUpdateStatus('no_data');
+            }
+        } catch (error) {
+            console.error('Failed to fetch and merge call details:', error);
+            setUpdateStatus('error');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+
+    const handlePredefinedData = async () => {
+        try {
+            const clientId = JSON.parse(sessionStorage.getItem('user'))._id;
+            const predefinedData = await getCallAgainData(clientId);
+            if (predefinedData && predefinedData.length > 0) {
+                const mappedData = predefinedData.map(data => ({
+                    _id: data._id,
+                    name: data.name,
+                    number: data.number
+                }));
+                setCustomers(mappedData);
+                setIsPredefined(true);  // Set the flag to true when data is predefined
+            }
+        } catch (error) {
+            console.error('Failed to fetch predefined data:', error);
+        }
+    };
+
     const handleClose = () => setOpen(false);
+
+    const getStatusIcon = (status) => {
+        if (status === 'waiting') return <QuestionMarkIcon color="action" />;
+        if (status === 'success') return <CheckCircleIcon color="success" />;
+        if (status === 'failed') return <ErrorIcon color="error" />;
+        return <QuestionMarkIcon color="action" />;
+    };
 
     return (
         <Box sx={{ width: '100%', maxWidth: 600, margin: 'auto', mt: 5 }}>
             <Typography variant="h6" component="h2">Make a Call</Typography>
+            <Button variant="contained" color="primary" onClick={handleFetchAndMergeCallDetails} sx={{ mb: 2 }}>
+                Fetch and Merge Call Details
+            </Button>
+            {loading && <CircularProgress />}
+            {updateStatus === 'success' && <Typography variant="body1" color="success">Call details updated successfully!</Typography>}
+            {updateStatus === 'error' && <Typography variant="body1" color="error">Failed to update call details.</Typography>}
             <FormControl fullWidth sx={{ my: 2 }}>
                 <InputLabel>Assistant</InputLabel>
                 <Select
@@ -87,6 +267,7 @@ const MakeCall = () => {
                     onChange={handleAssistantChange}
                     label="Assistant"
                 >
+                    <MenuItem value="Default">Default</MenuItem>
                     {assistants.map((assistant) => (
                         <MenuItem key={assistant._id} value={assistant._id}>
                             {assistant.name}
@@ -94,39 +275,51 @@ const MakeCall = () => {
                     ))}
                 </Select>
             </FormControl>
-
-            {customers.map((customer, index) => (
-                <Box key={index} sx={{ display: 'flex', alignItems: 'center', my: 2 }}>
-                    <TextField
-                        label="Customer Name"
-                        name="name"
-                        value={customer.name}
-                        onChange={(e) => handleCustomerChange(index, e)}
-                        sx={{ mr: 2 }}
-                    />
-                    <TextField
-                        label="Customer Phone Number"
-                        name="number"
-                        value={customer.number}
-                        onChange={(e) => handleCustomerChange(index, e)}
-                        sx={{ mr: 2 }}
-                    />
-                    <IconButton onClick={addCustomer} sx={{ mr: 1 }}>
-                        <AddIcon />
-                    </IconButton>
-                    {customers.length > 1 && (
-                        <IconButton onClick={() => removeCustomer(index)}>
-                            <RemoveIcon />
+<Typography>{customers.length}</Typography>
+            <Box sx={{ maxHeight: 300, overflowY: 'auto', my: 2, border: '1px solid #ccc', padding: 2 }}>
+                {customers.map((customer, index) => (
+                    <Box key={index} sx={{ display: 'flex', alignItems: 'center', my: 1 }}>
+                        <TextField
+                            label="Customer Name"
+                            name="name"
+                            value={customer.name}
+                            onChange={(e) => handleCustomerChange(index, e)}
+                            sx={{ mr: 2 }}
+                        />
+                        <TextField
+                            label="Customer Phone Number"
+                            name="number"
+                            value={customer.number}
+                            onChange={(e) => handleCustomerChange(index, e)}
+                            sx={{ mr: 2 }}
+                        />
+                        {getStatusIcon(callStatus[customer.number])}
+                        <IconButton onClick={addCustomer} sx={{ ml: 2 }}>
+                            <AddIcon />
                         </IconButton>
-                    )}
-                </Box>
-            ))}
+                        {customers.length > 1 && (
+                            <IconButton onClick={() => removeCustomer(index)}>
+                                <RemoveIcon />
+                            </IconButton>
+                        )}
+                    </Box>
+                ))}
+            </Box>
 
             <Box sx={{ my: 2 }}>
                 <Button variant="contained" component="label">
                     Upload CSV
                     <input type="file" accept=".csv" hidden onChange={handleFileUpload} />
                 </Button>
+                
+            <Button variant="contained" color="secondary" onClick={handlePredefinedData} sx={{ ml:2 }}>
+                Fetch unreceived calls
+            </Button>
+                {uploadProgress > 0 && (
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                        Upload Progress: {uploadProgress}%
+                    </Typography>
+                )}
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -150,8 +343,29 @@ const MakeCall = () => {
                     width: 400, bgcolor: 'background.paper', border: '2px solid #000', boxShadow: 24, p: 4
                 }}>
                     <Typography variant="h6" component="h2">Call Response</Typography>
-                    <Typography variant="body1" sx={{ mt: 2 }}>
-                        {response ? JSON.stringify(response, null, 2) : 'No response'}
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="h6" component="h3">Waiting</Typography>
+                    <Typography variant="body1" sx={{ mt: 1 }}>
+                        {Object.keys(callStatus).filter(key => callStatus[key] === 'waiting').length > 0 ?
+                            Object.keys(callStatus).filter(key => callStatus[key] === 'waiting').map(key => 
+                                response[key]?.customer ? `${response[key].customer.name} (${response[key].customer.number})` : ''
+                            ).join(', ') : 'None'}
+                    </Typography>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="h6" component="h3">Success</Typography>
+                    <Typography variant="body1" sx={{ mt: 1 }}>
+                        {Object.keys(callStatus).filter(key => callStatus[key] === 'success').length > 0 ?
+                            Object.keys(callStatus).filter(key => callStatus[key] === 'success').map(key => 
+                                response[key]?.customer ? `${response[key].customer.name} (${response[key].customer.number})` : ''
+                            ).join(', ') : 'None'}
+                    </Typography>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="h6" component="h3">Failed</Typography>
+                    <Typography variant="body1" sx={{ mt: 1 }}>
+                        {Object.keys(callStatus).filter(key => callStatus[key] === 'failed').length > 0 ?
+                            Object.keys(callStatus).filter(key => callStatus[key] === 'failed').map(key => 
+                                response[key]?.customer ? `${response[key].customer.name} (${response[key].customer.number})` : ''
+                            ).join(', ') : 'None'}
                     </Typography>
                     <Button
                         variant="contained"

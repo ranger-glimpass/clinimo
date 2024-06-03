@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TextField, Button, Box, Typography, Paper, Avatar } from '@mui/material';
-import { updateUser } from '../apiService'; // Adjust based on your actual import
+import { updateClient } from '../apiService'; // Adjust based on your actual import
 
 function Account() {
     const [userData, setUserData] = useState({
@@ -12,6 +12,11 @@ function Account() {
         contactNumber: '',
         password: '',
         imageUrl: '', // Assuming there's an imageUrl field
+        vapiApi: '',
+        assistantId: '',
+        twilioNumber: '',
+        twilioAccountSid: '',
+        twilioAuthToken: ''
     });
     const [editMode, setEditMode] = useState(false);
 
@@ -31,7 +36,7 @@ function Account() {
     const saveUpdates = async () => {
         if (window.confirm("Are you sure you want to save these changes?")) {
             try {
-                const response = await updateUser(userData);
+                const response = await updateClient(userData);
                 console.log('Update response:', response);
                 alert('Profile updated successfully!');
                 setEditMode(false); // Disable edit mode after successful update
@@ -124,6 +129,56 @@ function Account() {
                         fullWidth
                         name="password"
                         value={userData.password}
+                        onChange={handleInputChange}
+                        disabled={!editMode}
+                        sx={{ mb: 2 }}
+                    />
+                    <TextField
+                        label="Vapi API"
+                        variant="outlined"
+                        fullWidth
+                        name="vapiApi"
+                        value={userData.vapiApi}
+                        onChange={handleInputChange}
+                        disabled={!editMode}
+                        sx={{ mb: 2 }}
+                    />
+                    <TextField
+                        label="Assistant ID"
+                        variant="outlined"
+                        fullWidth
+                        name="assistantId"
+                        value={userData.assistantId}
+                        onChange={handleInputChange}
+                        disabled={!editMode}
+                        sx={{ mb: 2 }}
+                    />
+                    <TextField
+                        label="Twilio Number"
+                        variant="outlined"
+                        fullWidth
+                        name="twilioNumber"
+                        value={userData.twilioNumber}
+                        onChange={handleInputChange}
+                        disabled={!editMode}
+                        sx={{ mb: 2 }}
+                    />
+                    <TextField
+                        label="Twilio Account SID"
+                        variant="outlined"
+                        fullWidth
+                        name="twilioAccountSid"
+                        value={userData.twilioAccountSid}
+                        onChange={handleInputChange}
+                        disabled={!editMode}
+                        sx={{ mb: 2 }}
+                    />
+                    <TextField
+                        label="Twilio Auth Token"
+                        variant="outlined"
+                        fullWidth
+                        name="twilioAuthToken"
+                        value={userData.twilioAuthToken}
                         onChange={handleInputChange}
                         disabled={!editMode}
                         sx={{ mb: 2 }}

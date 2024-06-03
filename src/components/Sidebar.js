@@ -83,6 +83,7 @@ function Sidebar() {
                         { text: 'Staff', icon: <PeopleIcon />, path: '/staff' },
                         { text: 'Assistants', icon: <SupportAgentIcon />, path: '/assistants' },
                         { text: 'Make Call', icon: <AddIcCallIcon />, path: '/make-call' },
+                        { text: 'Call Report', icon: <DescriptionIcon />, path: '/call-reports' },
                         { text: 'Call Logs', icon: <DescriptionIcon />, path: '/call-logs' },
                         { text: 'Wallet', icon: <AccountBalanceWalletIcon />, path: '/wallet' },
                         { text: 'Account', icon: <AccountCircleIcon />, path: '/account' },
