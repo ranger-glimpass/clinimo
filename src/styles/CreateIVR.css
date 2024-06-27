@@ -1,0 +1,14 @@
+.create-ivr {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .create-ivr .MuiTextField-root {
+    margin-bottom: 20px;
+  }
+  
+  .create-ivr .MuiButton-root {
+    margin-bottom: 20px;
+  }
+  

@@ -13,6 +13,7 @@ import Staff from './components/Staff';
 import MakeCall from './components/MakeCall';
 import Registration from './components/Registration';
 import CallReport from './components/CallReport';
+import CreateIVR from './components/CreateIVR';
 
 function App() {
     return (
@@ -68,6 +69,13 @@ function App() {
                     <ProtectedRoute>
                         <Layout>
                             <MakeCall />
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/create-ivr" element={
+                    <ProtectedRoute>
+                        <Layout>
+                            <CreateIVR />
                         </Layout>
                     </ProtectedRoute>
                 } />

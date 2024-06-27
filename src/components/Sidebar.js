@@ -11,6 +11,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import AddIcCallIcon from '@mui/icons-material/AddIcCall';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 import { useTheme } from '@mui/material/styles';
 
 function Sidebar() {
@@ -85,6 +86,7 @@ function Sidebar() {
                         { text: 'Make Call', icon: <AddIcCallIcon />, path: '/make-call' },
                         { text: 'Call Report', icon: <DescriptionIcon />, path: '/call-reports' },
                         { text: 'Call Logs', icon: <DescriptionIcon />, path: '/call-logs' },
+                        { text: 'Create IVR', icon: <ContactPhoneIcon />, path: '/create-ivr' },
                         { text: 'Wallet', icon: <AccountBalanceWalletIcon />, path: '/wallet' },
                         { text: 'Account', icon: <AccountCircleIcon />, path: '/account' },
                     ].map((item) => (
