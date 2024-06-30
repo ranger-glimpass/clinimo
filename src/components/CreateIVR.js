@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CircularProgress, IconButton, TextField, Button, Grid, Paper, Typography, Select, MenuItem } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import axios from 'axios';
@@ -15,9 +15,9 @@ const CreateIVR = () => {
 
   const fetchVoices = async () => {
     try {
-      const response = await axios.get('https://api.11labs.io/v1/voices', {
+      const response = await axios.get('https://api.elevenlabs.io//v1/voices', {
         headers: {
-          'Authorization': `Bearer ${process.env.REACT_APP_11LABS_API_KEY}`,
+          'xi-api-key': process.env.REACT_APP_11LABS_API_KEY,
         },
       });
       setVoices(response.data.voices);
@@ -86,14 +86,14 @@ const CreateIVR = () => {
   const playAudio = async (text) => {
     try {
       const response = await axios.post(
-        'https://api.11labs.io/v1/text-to-speech',
+        `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}`,
         {
           text,
-          voice: selectedVoice,
+          voice_settings: { stability: 0.5, similarity_boost: 0.75 }
         },
         {
-          headers: {
-            'Authorization': `Bearer ${process.env.REACT_APP_11LABS_API_KEY}`,
+          headers: {          
+            'xi-api-key': process.env.REACT_APP_11LABS_API_KEY,
             'Content-Type': 'application/json',
           },
           responseType: 'blob', // Ensure the response is in blob format for audio playback
@@ -108,7 +108,7 @@ const CreateIVR = () => {
   };
 
   // Fetch voices on component mount
-  React.useEffect(() => {
+  useEffect(() => {
     fetchVoices();
   }, []);
 
@@ -131,7 +131,7 @@ const CreateIVR = () => {
       >
         <MenuItem value="" disabled>Select Voice</MenuItem>
         {voices.map((voice) => (
-          <MenuItem key={voice.id} value={voice.id}>{voice.name}</MenuItem>
+          <MenuItem key={voice.voice_id} value={voice.voice_id}>{voice.name}</MenuItem>
         ))}
       </Select>
       <Button

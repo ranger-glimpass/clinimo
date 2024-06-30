@@ -39,6 +39,9 @@ export const makeCall = async (customer) => {
       number: customer.number,
       name: customer.name,
     },
+    assistantOverrides: {
+      firstMessage: `Hello ${customer.name}`,
+    },
     phoneNumber: {
       twilioPhoneNumber: user.twilioNumber,
       twilioAccountSid: user.twilioAccountSid,
