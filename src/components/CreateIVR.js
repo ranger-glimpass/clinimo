@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { CircularProgress, IconButton, TextField, Button, Grid, Paper, Typography, Select, MenuItem } from '@mui/material';
+import { CircularProgress, IconButton, TextField, Button, Grid, Paper, Typography, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Checkbox } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import EditIcon from '@mui/icons-material/Edit';
+import AddIcon from '@mui/icons-material/Add';
 import axios from 'axios';
 import '../styles/CreateIVR.css';
 
@@ -11,11 +13,15 @@ const CreateIVR = () => {
   const [changingPromptIndex, setChangingPromptIndex] = useState(null);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState('');
-  const [audioUrl, setAudioUrl] = useState('');
+  const [editingPromptIndex, setEditingPromptIndex] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [openModal, setOpenModal] = useState(false);
+  const [generateAllAudio, setGenerateAllAudio] = useState(false);
+  const [audioList, setAudioList] = useState([]);
 
   const fetchVoices = async () => {
     try {
-      const response = await axios.get('https://api.elevenlabs.io//v1/voices', {
+      const response = await axios.get('https://api.elevenlabs.io/v1/voices', {
         headers: {
           'xi-api-key': process.env.REACT_APP_11LABS_API_KEY,
         },
@@ -83,31 +89,66 @@ const CreateIVR = () => {
     }
   };
 
-  const playAudio = async (text) => {
+  const editPrompt = (index) => {
+    setEditingPromptIndex(index);
+    setEditText(generatedPrompts[index]);
+  };
+
+  const saveEditedPrompt = () => {
+    setGeneratedPrompts(prev => {
+      const newPrompts = [...prev];
+      newPrompts[editingPromptIndex] = editText;
+      return newPrompts;
+    });
+    setEditingPromptIndex(null);
+  };
+
+  const handleOpenModal = () => {
+    if (selectedVoice) {
+      setOpenModal(true);
+    } else {
+      alert('Please select a voice first.');
+    }
+  };
+
+  const handleCloseModal = () => {
+    setOpenModal(false);
+  };
+
+  const handleGenerateAllAudio = async () => {
     try {
-      const response = await axios.post(
-        `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}`,
-        {
-          text,
-          voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-        },
-        {
-          headers: {          
-            'xi-api-key': process.env.REACT_APP_11LABS_API_KEY,
-            'Content-Type': 'application/json',
+      const newAudioList = [];
+      for (let text of generatedPrompts) {
+        const response = await axios.post(
+          `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}`,
+          {
+            text,
+            voice_settings: { stability: 0.5, similarity_boost: 0.75 }
           },
-          responseType: 'blob', // Ensure the response is in blob format for audio playback
-        }
-      );
-      const audioBlob = new Blob([response.data], { type: 'audio/mpeg' });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      setAudioUrl(audioUrl);
+          {
+            headers: {
+              'xi-api-key': process.env.REACT_APP_11LABS_API_KEY,
+              'Content-Type': 'application/json',
+            },
+            responseType: 'blob',
+          }
+        );
+        const audioBlob = new Blob([response.data], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        newAudioList.push({ text, audioUrl });
+      }
+      setAudioList(newAudioList);
     } catch (error) {
       console.error('Error generating audio:', error);
     }
   };
 
-  // Fetch voices on component mount
+  const addPromptManually = () => {
+    setGeneratedPrompts([...generatedPrompts, '']);
+    setEditingPromptIndex(generatedPrompts.length);
+    setEditText('');
+  };
+
   useEffect(() => {
     fetchVoices();
   }, []);
@@ -131,23 +172,44 @@ const CreateIVR = () => {
       >
         <MenuItem value="" disabled>Select Voice</MenuItem>
         {voices.map((voice) => (
-          <MenuItem key={voice.voice_id} value={voice.voice_id}>{voice.name}</MenuItem>
+          <MenuItem key={voice.voice_id} value={voice.voice_id}>
+            {voice.name}
+            <audio controls src={voice.preview_url} style={{ marginLeft: '10px' }} />
+          </MenuItem>
         ))}
       </Select>
       <Button
         variant="contained"
         color="primary"
-        style={{marginTop:"5px"}}
+        style={{ marginTop: '5px' }}
         onClick={generatePrompts}
         disabled={loading}
       >
         {loading ? <CircularProgress size={24} /> : 'Generate Prompts'}
       </Button>
+      <IconButton 
+        color="primary"
+        onClick={addPromptManually}
+        style={{ marginTop: '5px', marginLeft: '10px' }}
+      >
+        <AddIcon />
+      </IconButton>
       <Grid container spacing={3} style={{ marginTop: '20px' }}>
         {generatedPrompts.map((text, index) => (
           <Grid item xs={12} sm={6} md={4} key={index}>
             <Paper elevation={3} style={{ padding: '20px', position: 'relative' }}>
-              <Typography variant="body1">{text}</Typography>
+              <Typography variant="body1">
+                {editingPromptIndex === index ? (
+                  <TextField
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    fullWidth
+                    multiline
+                  />
+                ) : (
+                  text
+                )}
+              </Typography>
               <IconButton 
                 edge="end" 
                 onClick={() => changePrompt(index)} 
@@ -156,19 +218,64 @@ const CreateIVR = () => {
               >
                 {changingPromptIndex === index ? <CircularProgress size={24} /> : <RefreshIcon />}
               </IconButton>
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={() => playAudio(text)}
-                style={{ marginTop: '10px' }}
+              <IconButton 
+                edge="end" 
+                onClick={() => editPrompt(index)} 
+                style={{ position: 'absolute', top: '10px', right: '50px' }}
               >
-                Play Audio
-              </Button>
+                <EditIcon />
+              </IconButton>
+              {editingPromptIndex === index && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={saveEditedPrompt}
+                  style={{ marginTop: '10px' }}
+                >
+                  Save
+                </Button>
+              )}
             </Paper>
           </Grid>
         ))}
       </Grid>
-      {audioUrl && <audio controls src={audioUrl} autoPlay />}
+      <Button
+        variant="contained"
+        color="primary"
+        style={{ marginTop: '20px' }}
+        onClick={handleOpenModal}
+        disabled={!selectedVoice}
+      >
+        Continue
+      </Button>
+      <Dialog open={openModal} onClose={handleCloseModal}>
+        <DialogTitle>Generate Audio</DialogTitle>
+        <DialogContent>
+          <FormControlLabel
+            control={<Checkbox checked={generateAllAudio} onChange={(e) => setGenerateAllAudio(e.target.checked)} />}
+            label="Generate audio for all prompts"
+          />
+          {generateAllAudio && (
+            <>
+              <Typography variant="h6">Generated Audio:</Typography>
+              {audioList.map((item, index) => (
+                <div key={index} style={{ marginBottom: '10px' }}>
+                  <Typography variant="body1">{item.text}</Typography>
+                  <audio controls src={item.audioUrl} />
+                </div>
+              ))}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleGenerateAllAudio} color="primary">
+            Generate
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

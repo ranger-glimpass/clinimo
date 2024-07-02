@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, TextField, Typography, Modal, CircularProgress, Select, MenuItem, InputLabel, FormControl, IconButton, Divider } from '@mui/material';
+import { Box, Button, TextField, Typography, Modal, CircularProgress, Select, MenuItem, InputLabel, FormControl, IconButton, Divider, Checkbox, FormControlLabel } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -7,6 +7,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import QuestionMarkIcon from '@mui/icons-material/Help';
 import { makeCall, createUser, getCallReports, fetchCallDetailsById, updateUser, getCallAgainData } from '../apiService';
 import Papa from 'papaparse';
+import { format } from 'date-fns-tz';
 
 const MakeCall = () => {
     const [customers, setCustomers] = useState([{ name: '', number: '' }]);
@@ -19,6 +20,8 @@ const MakeCall = () => {
     const [callStatus, setCallStatus] = useState({});
     const [updateStatus, setUpdateStatus] = useState(null);
     const [isPredefined, setIsPredefined] = useState(false);
+    const [firstMessage, setFirstMessage] = useState('');
+    const [overrideFirstMessage, setOverrideFirstMessage] = useState(false);
 
     useEffect(() => {
         const storedAssistants = JSON.parse(sessionStorage.getItem('assistants')) || [];
@@ -53,13 +56,13 @@ const MakeCall = () => {
             const newCustomers = [];
             let rowCount = 0;
             const CHUNK_SIZE = 500; // Adjust this value as needed
-    
+
             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
                 chunkSize: CHUNK_SIZE,
                 chunk: (results, parser) => {
-                    newCustomers.push(...results.data.map(row => ({ name: row.CustomerName, number: '+' + row.PhoneNumber })));
+                    newCustomers.push(...results.data.map(row => ({ name: row.CustomerName, number: '+91' + row.PhoneNumber })));
                     rowCount += results.data.length;
                     setUploadProgress((rowCount / results.meta.cursor) * 100);
                 },
@@ -77,33 +80,6 @@ const MakeCall = () => {
             });
         }
     };
-    
-
-    // const handleFileUpload = (e) => {
-    //     const file = e.target.files[0];
-    //     if (file) {
-    //         setUploadProgress(0);
-    //         const newCustomers = [];
-    //         let rowCount = 0;
-
-    //         Papa.parse(file, {
-    //             header: true,
-    //             skipEmptyLines: true,
-    //             step: (row) => {
-    //                 newCustomers.push({ name: row.data.CustomerName, number: row.data.PhoneNumber });
-    //                 rowCount += 1;
-    //                 setCustomers(prevCustomers => {
-    //                     const updatedCustomers = prevCustomers[0].name === '' && prevCustomers[0].number === '' ? [] : prevCustomers;
-    //                     return [...updatedCustomers, { name: row.data.CustomerName, number: '+' + row.data.PhoneNumber }];
-    //                 });
-    //                 setUploadProgress((rowCount / file.size) * 100);
-    //             },
-    //             complete: () => {
-    //                 setUploadProgress(100);
-    //             }
-    //         });
-    //     }
-    // };
 
     const handleCallClick = async () => {
         setLoading(true);
@@ -112,16 +88,17 @@ const MakeCall = () => {
             return acc;
         }, {});
         setCallStatus(newCallStatus);
-
+    
+        const updatedCallStatus = { ...newCallStatus }; // Define updatedCallStatus here
+    
         try {
             const results = await Promise.allSettled(
-                customers.map(customer => makeCall(customer, assistantId))
+                customers.map(customer => makeCall(customer, assistantId, overrideFirstMessage ? firstMessage : null))
             );
             const responses = {};
             const formattedResponses = [];
-            const updatedCallStatus = { ...newCallStatus };
             const clientId = JSON.parse(sessionStorage.getItem('user'))._id;
-
+    
             results.forEach((result, index) => {
                 const customer = customers[index];
                 const customerResponse = {
@@ -132,10 +109,13 @@ const MakeCall = () => {
                 };
                 responses[customer.number] = customerResponse;
                 let callAgain = false;
-                // console.log(result)
-                if(result.status === "rejected"){
+                if (result.status === "rejected") {
                     callAgain = true;
                 }
+    
+                const now = new Date();
+                const calledOn = format(now, 'yyyy-MM-dd HH:mm:ssXXX', { timeZone: 'Asia/Kolkata' });
+    
                 formattedResponses.push({
                     _id: customer._id, // Keep _id from predefined data
                     number: customer.number,
@@ -144,9 +124,10 @@ const MakeCall = () => {
                     callAgain: callAgain,
                     reason: result.reason?.message || null,
                     id: result.value?.id || null,
-                    clientId: clientId
+                    clientId: clientId,
+                    calledOn: calledOn
                 });
-
+    
                 if (result.status === 'fulfilled') {
                     updatedCallStatus[customer.number] = 'success';
                 } else {
@@ -156,11 +137,9 @@ const MakeCall = () => {
             setResponse(responses);
             setCallStatus(updatedCallStatus);
             setOpen(true);
-
-            // Print the response status for all users in the console
+    
             console.log("Detailed Response Status for all users:", formattedResponses);
-
-            // Conditionally call createUser or updateUser based on isPredefined flag
+    
             if (isPredefined) {
                 await updateUser(formattedResponses);
             } else {
@@ -174,6 +153,7 @@ const MakeCall = () => {
             setLoading(false);
         }
     };
+    
 
     const handleFetchAndMergeCallDetails = async () => {
         setLoading(true);
@@ -182,7 +162,7 @@ const MakeCall = () => {
             const callReports = await getCallReports(clientId);
             const filteredReports = callReports.filter(report => report.id && !report.startedAt);
             console.log(filteredReports);
-    
+
             const mergedReports = await Promise.all(filteredReports.map(async (report) => {
                 try {
                     const callDetails = await fetchCallDetailsById(report.id);
@@ -199,16 +179,13 @@ const MakeCall = () => {
                     };
                 } catch (error) {
                     console.error(`Failed to fetch details for report ID ${report.id}:`, error);
-                    // Return null or any other indication of failure
                     return null;
                 }
             }));
-    
-            // Filter out the null values (failed fetches)
+
             const successfulMergedReports = mergedReports.filter(report => report !== null);
             console.log("Merged Reports:", successfulMergedReports);
-    
-            // Update the merged reports only if there are successful ones
+
             if (successfulMergedReports.length > 0) {
                 await updateUser(successfulMergedReports);
                 setUpdateStatus('success');
@@ -222,7 +199,6 @@ const MakeCall = () => {
             setLoading(false);
         }
     };
-    
 
     const handlePredefinedData = async () => {
         try {
@@ -235,7 +211,7 @@ const MakeCall = () => {
                     number: data.number
                 }));
                 setCustomers(mappedData);
-                setIsPredefined(true);  // Set the flag to true when data is predefined
+                setIsPredefined(true);
             }
         } catch (error) {
             console.error('Failed to fetch predefined data:', error);
@@ -275,7 +251,20 @@ const MakeCall = () => {
                     ))}
                 </Select>
             </FormControl>
-<Typography>{customers.length}</Typography>
+            <FormControlLabel
+                control={<Checkbox checked={overrideFirstMessage} onChange={() => setOverrideFirstMessage(!overrideFirstMessage)} />}
+                label="Override First Message"
+            />
+            {overrideFirstMessage && (
+                <TextField
+                    label="First Message"
+                    value={firstMessage}
+                    onChange={(e) => setFirstMessage(e.target.value)}
+                    fullWidth
+                    sx={{ mb: 2 }}
+                />
+            )}
+            <Typography>{customers.length}</Typography>
             <Box sx={{ maxHeight: 300, overflowY: 'auto', my: 2, border: '1px solid #ccc', padding: 2 }}>
                 {customers.map((customer, index) => (
                     <Box key={index} sx={{ display: 'flex', alignItems: 'center', my: 1 }}>
@@ -312,9 +301,9 @@ const MakeCall = () => {
                     <input type="file" accept=".csv" hidden onChange={handleFileUpload} />
                 </Button>
                 
-            <Button variant="contained" color="secondary" onClick={handlePredefinedData} sx={{ ml:2 }}>
-                Fetch unreceived calls
-            </Button>
+                <Button variant="contained" color="secondary" onClick={handlePredefinedData} sx={{ ml:2 }}>
+                    Fetch unreceived calls
+                </Button>
                 {uploadProgress > 0 && (
                     <Typography variant="body2" sx={{ mt: 1 }}>
                         Upload Progress: {uploadProgress}%

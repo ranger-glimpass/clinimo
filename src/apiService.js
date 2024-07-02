@@ -1,5 +1,6 @@
 // src/apiService.js
 import axios from 'axios';
+import { format } from 'date-fns-tz';
 
 const API_BASE_URL = 'https://application.glimpass.com/interlogue';
 const API_BASE_URL_VAPI = 'https://api.vapi.ai';
@@ -27,31 +28,66 @@ const createApiClient = (baseURL) => {
 const apiClient = createApiClient(API_BASE_URL);
 const vapiClient = createApiClient(API_BASE_URL_VAPI);
 
-export const makeCall = async (customer) => {
+// export const makeCall = async (customer) => {
+//   const user = getUserData();
+//   if (!user) {
+//     throw new Error('User data not found in sessionStorage');
+//   }
+
+//   const payload = {
+//     assistantId: user.assistantId,
+//     customer: {
+//       number: customer.number,
+//       name: customer.name,
+//     },
+//     assistantOverrides: {
+//       firstMessage: `हैलो क्या मेरी बात ${customer.name} जी से हो रही है?`,
+//       // firstMessage: "hello",
+//     },
+//     phoneNumber: {
+//       twilioPhoneNumber: user.twilioNumber,
+//       twilioAccountSid: user.twilioAccountSid,
+//       twilioAuthToken: user.twilioAuthToken,
+//     },
+//   };
+
+//   const headers = {
+//     'Authorization': `Bearer ${getAuthToken()}`,
+//     'Content-Type': 'application/json',
+//   };
+
+//   const response = await axios.post(`${API_BASE_URL_VAPI}/call/phone`, payload, { headers });
+//   return response.data;
+// };
+
+export const makeCall = async (customer, assistantId, firstMessage) => {
   const user = getUserData();
   if (!user) {
-    throw new Error('User data not found in sessionStorage');
+      throw new Error('User data not found in sessionStorage');
   }
 
+  const now = new Date();
+  const calledOn = format(now, 'yyyy-MM-dd HH:mm:ssXXX', { timeZone: 'Asia/Kolkata' });
+
   const payload = {
-    assistantId: user.assistantId,
-    customer: {
-      number: customer.number,
-      name: customer.name,
-    },
-    assistantOverrides: {
-      firstMessage: `Hello ${customer.name}`,
-    },
-    phoneNumber: {
-      twilioPhoneNumber: user.twilioNumber,
-      twilioAccountSid: user.twilioAccountSid,
-      twilioAuthToken: user.twilioAuthToken,
-    },
+      assistantId: user.assistantId,
+      customer: {
+          number: customer.number,
+          name: customer.name,
+      },
+      assistantOverrides: firstMessage ? {
+          firstMessage: firstMessage,
+      } : {},
+      phoneNumber: {
+          twilioPhoneNumber: user.twilioNumber,
+          twilioAccountSid: user.twilioAccountSid,
+          twilioAuthToken: user.twilioAuthToken,
+      }
   };
 
   const headers = {
-    'Authorization': `Bearer ${getAuthToken()}`,
-    'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getAuthToken()}`,
+      'Content-Type': 'application/json',
   };
 
   const response = await axios.post(`${API_BASE_URL_VAPI}/call/phone`, payload, { headers });
