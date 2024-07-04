@@ -112,10 +112,17 @@ const CallReport = () => {
     };
 
     const downloadCSV = () => {
-        const csv = Papa.unparse(filteredReports);
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        saveAs(blob, 'call_reports.csv');
+        const xlsx = Papa.unparse(filteredReports);
+        const blob = new Blob([xlsx], { type: 'text/xlsx;charset=utf-8;' });
+        saveAs(blob, 'call_reports.xlsx');
     };
+
+    const downloadJSON = () => {
+        const jsonString = JSON.stringify(filteredReports, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
+        saveAs(blob, 'call_reports.json');
+    };
+    
 
     return (
         <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -198,6 +205,14 @@ const CallReport = () => {
                     sx={{ mb: 2 }}
                 >
                     Download CSV
+                </Button>
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={downloadJSON}
+                    sx={{ mb: 2 }}
+                >
+                    Download JSON
                 </Button>
                 <Paper elevation={3} sx={{ padding: 2, height: '400px', overflowY: 'auto' }}>
                     {loading && <CircularProgress sx={{ display: 'block', margin: 'auto' }} />}

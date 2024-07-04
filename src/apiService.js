@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { format } from 'date-fns-tz';
 
-const API_BASE_URL = 'https://application.glimpass.com/interlogue';
+const API_BASE_URL = 'https://app.glimpass.com/interlogue';
 const API_BASE_URL_VAPI = 'https://api.vapi.ai';
 
 const getUserData = () => {

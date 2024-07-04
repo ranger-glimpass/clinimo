@@ -62,7 +62,7 @@ const MakeCall = () => {
                 skipEmptyLines: true,
                 chunkSize: CHUNK_SIZE,
                 chunk: (results, parser) => {
-                    newCustomers.push(...results.data.map(row => ({ name: row.CustomerName, number: '+91' + row.PhoneNumber })));
+                    newCustomers.push(...results.data.map(row => ({ name: row.CustomerName, number: '' + row.PhoneNumber })));
                     rowCount += results.data.length;
                     setUploadProgress((rowCount / results.meta.cursor) * 100);
                 },
