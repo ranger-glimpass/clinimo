@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { CircularProgress, IconButton, TextField, Button, Grid, Paper, Typography, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Checkbox } from '@mui/material';
+import {
+  CircularProgress, IconButton, TextField, Button, Grid, Paper, Typography, Select, MenuItem,
+  Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Checkbox
+} from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
@@ -18,6 +21,10 @@ const CreateIVR = () => {
   const [openModal, setOpenModal] = useState(false);
   const [generateAllAudio, setGenerateAllAudio] = useState(false);
   const [audioList, setAudioList] = useState([]);
+
+  useEffect(() => {
+    fetchVoices();
+  }, []);
 
   const fetchVoices = async () => {
     try {
@@ -101,6 +108,7 @@ const CreateIVR = () => {
       return newPrompts;
     });
     setEditingPromptIndex(null);
+    setEditText('');
   };
 
   const handleOpenModal = () => {
@@ -148,10 +156,6 @@ const CreateIVR = () => {
     setEditingPromptIndex(generatedPrompts.length);
     setEditText('');
   };
-
-  useEffect(() => {
-    fetchVoices();
-  }, []);
 
   return (
     <div className="create-ivr">

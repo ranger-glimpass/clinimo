@@ -14,6 +14,8 @@ import MakeCall from './components/MakeCall';
 import Registration from './components/Registration';
 import CallReport from './components/CallReport';
 import CreateIVR from './components/CreateIVR';
+import MakeExoCall from './components/MakeExoCall';
+import CallExoReport from './components/CallExoReport'
 
 function App() {
     return (
@@ -69,6 +71,20 @@ function App() {
                     <ProtectedRoute>
                         <Layout>
                             <MakeCall />
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/make-exo-call" element={
+                    <ProtectedRoute>
+                        <Layout>
+                            <MakeExoCall />
+                        </Layout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/get-exo-call" element={
+                    <ProtectedRoute>
+                        <Layout>
+                            <CallExoReport />
                         </Layout>
                     </ProtectedRoute>
                 } />

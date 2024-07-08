@@ -60,6 +60,31 @@ const vapiClient = createApiClient(API_BASE_URL_VAPI);
 //   return response.data;
 // };
 
+export const makeExoCall = async (customer) => {
+
+  const payload = { 
+    agent_id: "91e816e6-2d1e-45ee-abd1-ff1da8a9480c",  
+    recipient_phone_number: customer.number,
+    // name : customer.name
+    }
+    const headers = {
+      // 'Authorization': `Bearer ${getAuthToken()}`,
+      'Content-Type': 'application/json',
+  };
+  const response = await axios.post("https://ivr.glimpass.com/call", payload, { headers });
+  return response.data;
+}
+ 
+export const getExoCallData = async () => {
+  try {
+    const response = await axios.get("https://app.glimpass.com/interlogue/get-ivr-log");
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching call data:', error);
+    throw error;
+  }
+};
+
 export const makeCall = async (customer, assistantId, firstMessage) => {
   const user = getUserData();
   if (!user) {
